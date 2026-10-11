@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Passport Photo Print Sheet</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#eef1f3;--panel:#fff;--ink:#17212b;--mute:#5d6b78;--line:#d3dae0;--accent:#0f6b63;--accent-ink:#fff;--warn:#9a5b00;--warnbg:#fff4de;--bad:#a12b2b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10161b;--panel:#1a232b;--ink:#e8edf1;--mute:#97a5b1;--line:#2f3c47;--accent:#4fc3b6;--accent-ink:#06211e;--warn:#f0b659;--warnbg:#3a2c12;--bad:#ff8c8c}}
+:root[data-theme="dark"]{--bg:#10161b;--panel:#1a232b;--ink:#e8edf1;--mute:#97a5b1;--line:#2f3c47;--accent:#4fc3b6;--accent-ink:#06211e;--warn:#f0b659;--warnbg:#3a2c12;--bad:#ff8c8c}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+.app{max-width:1100px;margin:0 auto;padding:20px 16px 40px;display:grid;gap:20px;grid-template-columns:minmax(0,340px) minmax(0,1fr);align-items:start}
+@media (max-width:820px){.app{grid-template-columns:1fr}}
+h1{font-size:1.35rem;margin:0 0 2px;letter-spacing:-.01em}
+.sub{color:var(--mute);margin:0 0 16px;font-size:.92rem}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+.step h2{font-size:1rem;margin:0 0 8px}
+.step.locked{opacity:.45;pointer-events:none}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:9px 14px;cursor:pointer}
+button:focus-visible,input:focus-visible,.btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.msg{margin:10px 0 0;padding:8px 10px;border-radius:8px;font-size:.9rem}
+.msg.ok{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.msg.warn{background:var(--warnbg);color:var(--warn)}
+.msg.bad{color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+#thumb{display:none;max-width:100%;max-height:160px;margin-top:10px;border-radius:6px;border:1px solid var(--line)}
+.stepper{display:flex;align-items:center;gap:0}
+.stepper button{width:44px;height:44px;font-size:1.3rem;padding:0}
+.stepper input{width:64px;height:44px;text-align:center;font:inherit;font-size:1.2rem;border:1px solid var(--line);border-left:0;border-right:0;background:var(--panel);color:var(--ink)}
+.stepper button:first-child{border-radius:8px 0 0 8px}.stepper button:last-child{border-radius:0 8px 8px 0}
+.small{font-size:.85rem;color:var(--mute);margin:8px 0 0}
+.small b{color:var(--ink)}
+.preview{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto}
+.preview h2{font-size:1rem;margin:0 0 10px}
+.holder{display:flex;justify-content:center}
+/* ---------- the A4 sheet, in real millimetres ---------- */
+.sheet{position:relative;width:210mm;height:297mm;background:#fff;flex:none;box-shadow:0 0 0 1px var(--line);overflow:hidden;color:#000}
+.sheet .ph{position:absolute;width:35mm;height:45mm;object-fit:cover;display:block}
+.sheet .g{position:absolute;background:#bdbdbd}
+.sheet .gv{width:.15mm}.sheet .gh{height:.15mm}
+.sheet .chk{position:absolute;height:.35mm;width:10mm;background:#000}
+.sheet .chkt{position:absolute;font:5pt/1 Arial,sans-serif;color:#000;white-space:nowrap}
+.empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#999;font:14pt Arial,sans-serif;text-align:center;padding:20mm}
+/* ---------- crop dialog ---------- */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
+.modal.open{display:flex}
+.dlg{background:var(--panel);border-radius:12px;padding:16px;max-width:360px;width:100%;max-height:100%;overflow:auto}
+.dlg h2{margin:0 0 4px;font-size:1.05rem}
+.vp{position:relative;width:280px;height:360px;margin:12px auto;overflow:hidden;background:#222;border-radius:4px;touch-action:none;cursor:grab;user-select:none}
+.vp img{position:absolute;left:0;top:0;max-width:none;transform-origin:0 0;pointer-events:none}
+.vp::after{content:"";position:absolute;inset:0;border:2px solid #fff;box-shadow:inset 0 0 0 1px rgba(0,0,0,.4);pointer-events:none}
+.zoom{display:flex;gap:10px;align-items:center;justify-content:center}
+.zoom input{width:200px}
+/* ---------- printing ---------- */
+@page{size:A4 portrait;margin:0}
+@media print{
+ html,body{background:#fff!important;margin:0;padding:0}
+ :root{padding:0!important}
+ .app>.side,.preview h2,.modal{display:none!important}
+ .app{display:block;padding:0;margin:0;max-width:none}
+ .preview{border:0;padding:0;overflow:visible;background:#fff}
+ .holder{display:block}
+ .sheet{zoom:1!important;box-shadow:none;margin:0;break-after:avoid}
+ *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="app">
+ <div class="side">
+  <h1>Passport photo sheet</h1>
+  <p class="sub">35 × 45 mm, 5 photos per row, A4 paper. Photos stay on this computer.</p>
+
+  <div class="step" id="s1">
+   <h2>1. Choose the photo</h2>
+   <input type="file" id="file" accept="image/*" aria-label="Choose photo">
+   <img id="thumb" alt="Selected photo">
+   <div id="info"></div>
+  </div>
+
+  <div class="step locked" id="s2">
+   <h2>2. Crop the photo?</h2>
+   <div class="row">
+    <button class="primary" id="cropBtn">Crop</button>
+    <button id="asisBtn">Use as is</button>
+   </div>
+   <div id="cropMsg"></div>
+  </div>
+
+  <div class="step locked" id="s3">
+   <h2>3. Rows to print</h2>
+   <div class="stepper">
+    <button id="minus" aria-label="Fewer rows">−</button>
+    <input id="rows" type="number" min="1" max="6" value="2" inputmode="numeric" aria-label="Number of rows">
+    <button id="plus" aria-label="More rows">+</button>
+   </div>
+   <p class="small"><b id="count">10</b> photos (5 per row, up to 6 rows).</p>
+   <label class="small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="chk" checked> Print a 10 mm check line</label>
+  </div>
+
+  <div class="step locked" id="s4">
+   <h2>4. Print</h2>
+   <button class="primary" id="printBtn" style="width:100%">Print sheet</button><div id="printNote"></div>
+   <p class="small">In the print dialog choose the Epson L3350, paper A4, <b>scale 100%</b> (not “Fit to page”), headers and footers off, photo paper, high quality.</p>
+   <p class="small">First print: measure the 10 mm line with a ruler. If it is not 10 mm, scale is not 100%.</p>
+  </div>
+ </div>
+
+ <div class="preview">
+  <h2>A4 preview (actual size when printed)</h2>
+  <div class="holder" id="holder"><div class="sheet" id="sheet"><div class="empty">Choose a photo to see the sheet</div></div></div>
+ </div>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Crop photo">
+ <div class="dlg">
+  <h2>Crop to 35 × 45 mm</h2>
+  <div class="small" style="margin:0">Drag the photo to position it. Use the slider to zoom.</div>
+  <div class="vp" id="vp"><img id="cimg" alt=""></div>
+  <div class="zoom"><span aria-hidden="true">−</span><input type="range" id="zoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom"><span aria-hidden="true">+</span></div>
+  <div class="row" style="margin-top:14px;justify-content:flex-end">
+   <button id="cancelCrop">Cancel</button>
+   <button class="primary" id="okCrop">Use this crop</button>
+  </div>
+ </div>
+</div>
+
+<script>
+(function(){
+ var RW=7, RH=9, TOL=0.01, MINW=413, MINH=531;
+ var PW=35, PH=45, GAP=3, COLS=5, MAXROWS=6, TOP=6;
+ var $=function(id){return document.getElementById(id)};
+ var srcImg=null, srcURL=null, finalURL=null;
+ var ratioOK=false;
+
+ function setLocked(id,l){$(id).classList.toggle('locked',l)}
+ function msg(el,cls,t){el.innerHTML=t?'<div class="msg '+cls+'">'+t+'</div>':''}
+
+ function reset(){
+  finalURL=null; ratioOK=false;
+  ['s2','s3','s4'].forEach(function(i){setLocked(i,true)});
+  msg($('cropMsg'),'',''); drawSheet();
+ }
+
+ $('file').addEventListener('change',function(e){
+  var f=e.target.files&&e.target.files[0];
+  reset(); $('thumb').style.display='none'; msg($('info'),'','');
+  if(!f) return;
+  if(!/^image\//.test(f.type)){msg($('info'),'bad','This file is not an image. Choose a JPG or PNG.');return}
+  var rd=new FileReader();
+  rd.onload=function(){
+   var im=new Image();
+   im.onload=function(){
+    srcImg=im; srcURL=rd.result;
+    $('thumb').src=srcURL; $('thumb').style.display='block';
+    var r=im.naturalWidth/im.naturalHeight, t=RW/RH;
+    ratioOK=Math.abs(r-t)/t<=TOL;
+    msg($('info'),'', '<div class="small">'+im.naturalWidth+' × '+im.naturalHeight+' px</div>');
+    setLocked('s2',false);
+    $('asisBtn').disabled=!ratioOK;
+    if(ratioOK) msg($('cropMsg'),'ok','This photo is already passport size. You can skip cropping.');
+    else msg($('cropMsg'),'bad','This photo is not passport size (35:45). Crop it to continue.');
+   };
+   im.onerror=function(){msg($('info'),'bad','Could not open this image. Try another file.')};
+   im.src=rd.result;
+  };
+  rd.readAsDataURL(f);
+ });
+
+ function accept(url,w,h){
+  finalURL=url;
+  var low=(w<MINW||h<MINH);
+  msg($('cropMsg'),low?'warn':'ok', low
+   ? 'Photo accepted, but it is small ('+w+' × '+h+' px). The print may look soft. A sharp print needs at least '+MINW+' × '+MINH+' px.'
+   : 'Photo accepted ('+w+' × '+h+' px).');
+  setLocked('s3',false); setLocked('s4',false); drawSheet();
+ }
+
+ $('asisBtn').addEventListener('click',function(){
+  if(!ratioOK||!srcImg) return;
+  accept(srcURL,srcImg.naturalWidth,srcImg.naturalHeight);
+ });
+
+ /* ---------- crop ---------- */
+ var VW=280, VH=360, sc=1, minSc=1, ox=0, oy=0;
+ var cimg=$('cimg'), vp=$('vp');
+ function clamp(){
+  var w=srcImg.naturalWidth*sc, h=srcImg.naturalHeight*sc;
+  ox=Math.min(0,Math.max(VW-w,ox)); oy=Math.min(0,Math.max(VH-h,oy));
+ }
+ function paint(){clamp();cimg.style.transform='translate('+ox+'px,'+oy+'px) scale('+sc+')'}
+ $('cropBtn').addEventListener('click',function(){
+  if(!srcImg) return;
+  cimg.src=srcURL;
+  minSc=Math.max(VW/srcImg.naturalWidth,VH/srcImg.naturalHeight);
+  sc=minSc; $('zoom').value=1;
+  ox=(VW-srcImg.naturalWidth*sc)/2; oy=(VH-srcImg.naturalHeight*sc)/2;
+  paint(); $('modal').classList.add('open');
+ });
+ $('zoom').addEventListener('input',function(){
+  var cx=(VW/2-ox)/sc, cy=(VH/2-oy)/sc;
+  sc=minSc*parseFloat(this.value);
+  ox=VW/2-cx*sc; oy=VH/2-cy*sc; paint();
+ });
+ var drag=null;
+ vp.addEventListener('pointerdown',function(e){drag={x:e.clientX,y:e.clientY,ox:ox,oy:oy};vp.setPointerCapture(e.pointerId);vp.style.cursor='grabbing'});
+ vp.addEventListener('pointermove',function(e){if(!drag)return;ox=drag.ox+e.clientX-drag.x;oy=drag.oy+e.clientY-drag.y;paint()});
+ function endDrag(){drag=null;vp.style.cursor='grab'}
+ vp.addEventListener('pointerup',endDrag); vp.addEventListener('pointercancel',endDrag);
+ $('cancelCrop').addEventListener('click',function(){$('modal').classList.remove('open')});
+ $('okCrop').addEventListener('click',function(){
+  var sx=-ox/sc, sy=-oy/sc, sw=VW/sc, sh=VH/sc;
+  var w=Math.round(sw), h=Math.round(sh*1); h=Math.round(w*RH/RW);
+  var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  cv.getContext('2d').drawImage(srcImg,sx,sy,sw,sh,0,0,w,h);
+  $('modal').classList.remove('open');
+  accept(cv.toDataURL('image/jpeg',0.95),w,h);
+ });
+
+ /* ---------- rows ---------- */
+ function rows(){var n=parseInt($('rows').value,10);if(isNaN(n))n=1;return Math.min(MAXROWS,Math.max(1,n))}
+ function setRows(n){$('rows').value=Math.min(MAXROWS,Math.max(1,n));drawSheet()}
+ $('minus').addEventListener('click',function(){setRows(rows()-1)});
+ $('plus').addEventListener('click',function(){setRows(rows()+1)});
+ $('rows').addEventListener('input',function(){if($('rows').value!=='')drawSheet()});
+ $('rows').addEventListener('change',function(){setRows(rows())});
+ $('chk').addEventListener('change',drawSheet);
+
+ /* ---------- sheet ---------- */
+ function box(cls,l,t,w,h){var d=document.createElement('div');d.className=cls;d.style.left=l+'mm';d.style.top=t+'mm';if(w!=null)d.style.width=w+'mm';if(h!=null)d.style.height=h+'mm';return d}
+ function drawSheet(){
+  var sh=$('sheet'); sh.innerHTML='';
+  var n=rows(); $('count').textContent=n*COLS;
+  if(!finalURL){sh.innerHTML='<div class="empty">Choose a photo to see the sheet</div>';fit();return}
+  var gw=COLS*PW+(COLS-1)*GAP, gh=n*PH+(n-1)*GAP;
+  var L=(210-gw)/2;
+  for(var r=0;r<n;r++)for(var c=0;c<COLS;c++){
+   var im=document.createElement('img'); im.className='ph'; im.src=finalURL; im.alt='';
+   im.style.left=(L+c*(PW+GAP))+'mm'; im.style.top=(TOP+r*(PH+GAP))+'mm'; sh.appendChild(im);
+  }
+  for(var c2=1;c2<COLS;c2++){
+   var x=L+c2*(PW+GAP)-GAP/2;
+   sh.appendChild(box('g gv',x-.075,TOP-2,null,gh+4));
+  }
+  for(var r2=1;r2<n;r2++){
+   var y=TOP+r2*(PH+GAP)-GAP/2;
+   sh.appendChild(box('g gh',L-2,y-.075,gw+4,null));
+  }
+  // outer cut guides (short ticks)
+  [[L-2,TOP,2,0],[L+gw,TOP,2,0],[L-2,TOP+gh,2,0],[L+gw,TOP+gh,2,0]].forEach(function(t){sh.appendChild(box('g gh',t[0],t[1]-.075,t[2],null))});
+  [[L,TOP-2,0,2],[L+gw,TOP-2,0,2],[L,TOP+gh,0,2],[L+gw,TOP+gh,0,2]].forEach(function(t){sh.appendChild(box('g gv',t[0]-.075,t[1],null,t[3]))});
+  if($('chk').checked){
+   var cy=TOP+gh+4;
+   sh.appendChild(box('chk',L,cy));
+   var tx=box('chkt',L+11,cy-.8); tx.textContent='10 mm'; sh.appendChild(tx);
+  }
+  fit();
+ }
+ function fit(){
+  var sh=$('sheet'), pv=document.querySelector('.preview');
+  var avail=pv.clientWidth-30, full=793.7;
+  var z=Math.min(1,Math.max(.3,avail/full)); sh.style.zoom=z;
+ }
+ window.addEventListener('resize',fit);
+ window.addEventListener('beforeprint',function(){$('sheet').style.zoom=1});
+ window.addEventListener('afterprint',fit);
+ $('printBtn').addEventListener('click',function(){
+  if(!finalURL) return;
+  var note=$('printNote');
+  var css='@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+   +'.sheet{position:relative;width:210mm;height:297mm;background:#fff;overflow:hidden;color:#000}'
+   +'.ph{position:absolute;width:35mm;height:45mm;object-fit:cover;display:block}'
+   +'.g{position:absolute;background:#bdbdbd}.gv{width:.15mm}.gh{height:.15mm}'
+   +'.chk{position:absolute;height:.35mm;width:10mm;background:#000}'
+   +'.chkt{position:absolute;font:5pt/1 Arial,sans-serif;color:#000;white-space:nowrap}';
+  var clone=$('sheet').cloneNode(true); clone.style.zoom='';
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Passport photo sheet</title><style>'+css+'</style></head><body>'
+   +clone.outerHTML+'<script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>';
+  var w=null;
+  try{w=window.open('','_blank')}catch(e){}
+  if(w){
+   w.document.open(); w.document.write(html); w.document.close();
+   note.innerHTML='<div class="msg ok">The print page opened in a new tab. If the print dialog does not appear, press Ctrl+P there.</div>';
+  }else{
+   try{$('sheet').style.zoom=1; window.print(); setTimeout(fit,300)}catch(e){}
+   note.innerHTML='<div class="msg warn">The browser blocked the print page. Allow pop-ups for this site and click Print again, or press Ctrl+P.</div>';
+  }
+ });
+ drawSheet();
+})();
+</script>
+</body>
+</html>
